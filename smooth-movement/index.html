@@ -1,0 +1,84 @@
+
+<html>
+<script type="text/javascript" src="script.js"></script>
+
+<!-- VERTEX SHADER SOURCE -->
+<script id="vertScript" type="text/glsl">
+
+  #ifdef GL_ES
+  precision lowp float;
+  #endif
+
+  attribute vec3 position; 
+
+  void main(void) {
+    gl_Position = vec4(position.x, position.y, position.z,1.0);
+  }
+
+</script>
+
+<!-- FRAGMENT SHADER SOURCE -->
+<script id="fragScript" type="text/glsl">
+
+	#ifdef GL_ES
+	precision lowp float;
+	#endif
+
+	#define PI 3.14159265359
+
+	uniform float uTime;
+	vec2 pts[16];
+
+	float squaredist(vec2 a, vec2 b) {
+	return (a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y);
+	}
+
+	float b(float a, float b, float c) { return a+(b-a)*c; }
+	float b(int a, int b, float c) { return float(a)+(float(b)-float(a))*c; }
+	float ib(float a, float b, float c) { return (c-a)/(b-a); }
+	float ib(int a, int b, float c) { return (c-float(a))/(float(b)-float(a)); }
+	float interpolate(vec2 o, vec2 d, float x) { return b(o.y, d.y, ib(o.x, d.x, x)); }
+	float interpolate(float ox, float oy, float dx, float dy, float x) { return b(oy, dy, ib(ox, dx, x)); }
+	float interpolate(int ox, int oy, int dx, int dy, float x) { return b(float(oy), float(dy), ib(float(ox), float(dx), x)); }
+
+	float alternate(float time, float frequency) {
+	return ib(-1, 1, cos( time * PI * 2. * frequency ) );
+	}
+
+	vec2 lerp(vec2 origin, vec2 target, vec2 time) {
+	return vec2(b(origin.x, target.x, alternate(time.x, 1.)), b(origin.y, target.y, alternate(time.y, 1.)));
+	}
+  
+	vec2 cint(vec2 origin, vec2 middle, vec2 target, vec2 time) {
+		middle = 2.*(middle) - 0.5*(origin + target);
+		return vec2(
+			b( b(origin.x, middle.x, time.x), b(middle.x, target.x, time.x), time.x),
+			b( b(origin.y, middle.y, time.y), b(middle.y, target.y, time.y), time.y)
+		);
+	}
+
+  void main(void) {
+	float t = mod(uTime*0.1, 2.)/2.;
+	t = (1.+cos((1.-t)*PI))/2.;
+	pts[0] = vec2(0.15,0.4);
+	pts[1] = vec2(0.85, 0.4);
+	pts[2] = vec2(0.3, 0.7);
+	pts[3] = cint(pts[0], pts[1], pts[2], vec2(t));
+    vec2 st = gl_FragCoord.xy/vec2(500.,500.);
+	vec3 color = vec3(0., 0., 0.);
+	float d;
+	for (int i = 0; i < 4; i++) {
+		d = 1.-interpolate(3000, 0, 0, 1, 1./(interpolate(0, 0, 2, 1, squaredist(st, pts[i]))));
+		color.b = max(color.b, color.b+min(d*d*d,0.7));
+	}
+	gl_FragColor = vec4(color, 1.);
+  }
+</script>
+
+<body onload = start() >
+<canvas id="glcanvas" width=500 height=500 style = "margin:auto; display:block"> 
+ Oops, browser has no <code> canvas </code> tag support 
+</canvas>
+</body>
+
+</html> 
